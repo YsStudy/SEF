@@ -1,0 +1,93 @@
+//defined in first pass, used everywhere.
+Label
+{
+char* name
+int address;
+instruction_type LabelType;
+Label* next;
+}
+
+linked list will contain all labels.
+
+//Struct returned by checkType 
+struct instrcution_type
+{
+isData:1
+isInstruction:1
+isEntry:1
+isExtern:1
+hasLabel:1
+}
+
+struct dataHolder
+{
+int data;
+int address;
+dataHolder* next;
+}
+
+struct extern
+{
+useAddress;
+char* name;
+extern* next;
+}
+
+struct entries
+{
+char* label;
+int address;
+entryPoint* next;
+}
+
+//either an instruction header, or its extra words.
+struct word
+{
+int instructionBinary:12;
+int address;
+word* next;
+}
+
+//globals:
+int totalIC
+int totalDC
+word* wordList;
+dataHolder* holderList;
+label* labelList;
+
+//prototypes
+
+//first pass: stores results in globals, returns error code - 0 is valid
+int FirstPass();
+
+//second pass: return error code, stores results in global
+int SecondPass();
+
+//Write result returns error code, stores results in files.
+int WriteResults;
+
+//Gets a line, reads it, and fills and returns instrcution type.
+instruction_type CheckType(char* line);
+
+//gets the line starting from the command itself. or -1 if not found
+int getOpcode(char* line);
+
+//Called by first pass
+void insertData(dataHolder* x);
+void insertExtern(extern* x);
+void insertLabel(label* x);
+
+//Called by second pass
+void insertWord(word* word);
+
+//takes label name, returns address or -1;
+label* getLabel(char* labelName);                                                                                                                     /*
+runs getOpcode gets group by opcode.
+Check data type shitat-mioon for variables (immediate/register/[extern/label]/distance)
+
+if [extern/label]: GetLabel
+	if extern - insertExtern, insert extra word with 0. encoding type 1
+	else - insert label address. encoding type 1
+others - by the book.
+*/
+void processCommand(char* line)       
