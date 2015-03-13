@@ -1,51 +1,52 @@
-#include <stdio.h>
+#include "Globals.h"
 
-#define OPCODE_LOCATION 6;
-#define GROUP_LOCATION 10;
-#define SOURCEOP_LOCATION 4;
-#define DESTOP_LOCATION 2;
+#define REGISTER_SIZE 5
+#define DST_PARAMTYPE_LOCATION 2
+#define SRC_PARAMTYPE_LOCATION 4
 
-//Order critical enumeration of the commands.
-const char *CmdList[] = {"mov", "cmp", "add", "sub", "not", "clr", "lea", "inc", "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"};
-typedef enum { mov, cmp, add, sub, not, clr, lea, inc, dec, jmp, bne, red, prn, jsr, rts, stop } opCode;
-
-
-typedef struct wordStruct word;
-typedef struct wordStruct
-{
-	unsigned short instructionBinary : 12;
-	int address;
-	word* next;
-};
-void printWord(word W);
-
-
-opCode GetCommandType(char * command);
+opCode GetCommandType(char * cmd);
 unsigned short GetGroup(opCode cmdType);
-word* ParseCmd(char * command);
+int ParseCmd(FILE *fp, int ic);
+Bool ValidateParameterType(int isDestination, ParamType param, opCode cmd);
+void MergeDirectRegisterParams();
 
-int main()
+void SecondPass(fp)
 {
-	char command[] = "cmp	~(K,END),W";
-	ParseCmd(command);
-	return 0;
+	int ic = 0;
+	while (!feof(fp))
+	{
+		/*Reads a command, or does nothing if it cannot find a command.
+		Returns the IC after advancing it accordingly*/
+		ic = ParseCmd(fp, ic);
+	}
 }
 
-word* ParseCmd(char * command)
+
+int ParseCmd(FILE *fp, int ic)
 {
 	opCode cmdType;
 	unsigned short group;
-	word* result;
-
-	result = malloc(sizeof(word));
+	struct word* result;
+	ParamType paramA, paramB;
+	char cmd[MaxCmdLength];
+	result = (struct word*)malloc(sizeof(struct word));
 
 	result->instructionBinary = 0;
 	result->next = NULL;
 
-	cmdType = GetCommandType(command);
-	printf("Debug: CMDType %d\n", cmdType);
-	if (cmdType == -1)
-		return NULL;
+	/*Skip all non-command*/
+	do
+	{
+		if (feof(fp))
+			return ic;
+		else if (!fscanf(fp, "%s", &cmd))
+			cmdType = - 1;
+		else
+		{
+			cmdType = GetCommandType(cmd);
+			printf("Debug: CMDType %d\n", cmdType);
+		}
+	} while (cmdType == -1);
 
 	group = GetGroup(cmdType);
 	printf("Debug: group %d\n", group);
@@ -53,19 +54,41 @@ word* ParseCmd(char * command)
 	result->instructionBinary |= cmdType << OPCODE_LOCATION;
 	result->instructionBinary |= group << GROUP_LOCATION;
 
-	//Group has 0 words, so we are done here, opCode and group are set, the rest of the fields are zeroes.
-	if (!group)
-		return result;
+	insertWord(result);
+	ic++;
+	/*Group has 0 words, so we are done here, opCode and group are set, the rest of the fields are zeroes.*/
+	if (!group) /* TODO: READ TO END - CHECK IF ANY CHARACTERS, REPORT ERROR IF SO*/
+		return ic;
+	paramA = ParseParam(fp, ic++);
 
-	//Todo: advance char iterator, parse params
+	if (group == 1)
+	{
+		ValidateParameterType(1, paramA, cmdType);
+		result->instructionBinary |= (paramA << DST_PARAMTYPE_LOCATION);
+		/* TODO: READ TO END - CHECK IF ANY CHARACTERS, REPORT ERROR IF SO*/
+		return ic;
+	}
+	else
+		ValidateParameterType(0, paramA, cmdType);
 
-	printWord(*result);
+	paramB = ParseParam(fp, ic); 
+	ic++;
+	ValidateParameterType(1, paramB, cmdType);
 
-	getchar();
-	return result;
+	/*check if both are register, in which case they need to be joined.*/
+	if (paramA == DIRREG && paramB == DIRREG)
+	{
+		ic--;
+		MergeDirectRegisterParams(); 
+	}
+	
+	result->instructionBinary |= (paramA << SRC_PARAMTYPE_LOCATION);
+	result->instructionBinary |= (paramB << DST_PARAMTYPE_LOCATION);
+	/* TODO: READ TO END - CHECK IF ANY CHARACTERS, REPORT ERROR IF SO*/
+	return ic;
 }
 
-void printWord(word W)
+void printWord(struct word W)
 {
 	int i;
 	printf("Word:\n");
@@ -104,25 +127,71 @@ unsigned short GetGroup(opCode cmdType)
 	}
 }
 
-opCode GetCommandType(char * command)
+opCode GetCommandType(char *cmd)
 {
-	short cmdIterator = 0;
-	short charIterator = 0;
-	short arrayLen = sizeof(CmdList) / sizeof(char*);
-	printf("%d\n", arrayLen);
+	short cmdCount, cmdIterator = 0;
 
-	//iterate over all commands..
-	for (cmdIterator = 0; cmdIterator < arrayLen; cmdIterator++)
+	cmdCount = sizeof(CmdList) / sizeof(char);
+	while (cmdIterator++ < cmdCount)
 	{
-		//increase char iterator until the next non-letter character or until the first non-matching character
-		for (charIterator = 0; (isalpha(command[charIterator]) && (command[charIterator] == CmdList[cmdIterator][charIterator]) ); charIterator++)
-			printf("DEBUG: %d, %d\n", command[charIterator], CmdList[cmdIterator][charIterator]);
-		printf("DDEBUG: %d, %d\n", command[charIterator], CmdList[cmdIterator][charIterator]);
-
-		//if both the input command's end (non-letter character) and the matching command's end have been reached, return the matching command index.
-		if (!isalpha(command[charIterator]) && !isalpha(CmdList[cmdIterator][charIterator]))
+		if (!strcmp(CmdList[cmdIterator], cmd))
 			return cmdIterator;
 	}
 	return -1;
 }
 
+Bool ValidateParameterType(int isDestination, ParamType param, opCode cmd)
+{
+	if (!isDestination)
+	{
+		if (cmd < 4 || (param == DIRECT && cmd == lea)) //First four commands work with all types lea works with DIRECT only.
+			return TRUE;
+		else
+		{
+			ErrorFound = TRUE;
+			printf("Parameter is of invalid type..");
+			return FALSE;
+		}
+	}
+	
+	switch (cmd)
+	{
+		case cmp:
+		case prn: 
+			return TRUE; /*these work with all types.*/
+		case jmp:
+		case bne:
+		case red:
+			if (param) /*these work with 1,2,3 (non zeroes)..*/
+				return TRUE;
+			break;
+		case jsr:
+			if (param == DIRECT)
+				return TRUE;
+			break;
+		default: 
+			if (param == DIRECT || param == DIRREG) /*these work with 1,3..*/
+				return TRUE;	
+			break;
+	}
+	ErrorFound = TRUE;
+	printf("Parameter is of invalid type..");
+	return FALSE;
+}
+
+/*Merges the last two words - assumes they are registers which need to be placed side by side in the same work.*/
+void MergeDirectRegisterParams()
+{
+	struct word*cWord = headWordList;
+	
+	/*Advance to the second-to-last word.*/
+	while ((cWord->next)->next)
+		cWord = cWord->next;
+
+	/*merge the two words*/
+	cWord->instructionBinary |= ( ((cWord->next)->instructionBinary) >> REGISTER_SIZE);
+
+	/*Free resources, and remove from list.*/
+	free(cWord->next);
+	cWord->next = NULL;
+}

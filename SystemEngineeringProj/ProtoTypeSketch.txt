@@ -86,7 +86,7 @@ runs getOpcode gets group by opcode.
 Check data type shitat-mioon for variables (immediate/register/[extern/label]/distance)
 
 if [extern/label]: GetLabel
-	if extern - insertExtern, insert extra word with 0. encoding type 1
+	if extern - insertExtern, insert extra struct wordwith 0. encoding type 1
 	else - insert label address. encoding type 1
 others - by the book.
 */
