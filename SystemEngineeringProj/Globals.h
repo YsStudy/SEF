@@ -3,8 +3,8 @@
 #include <string.h>
 #include "DataTypes.h"
 
-typedef enum { TRUE, FALSE } Bool;
-typedef enum { IMMIDIATE, DIRECT, DISTANCE, DIRREG } ParamType;
+typedef enum {FALSE, TRUE } Bool;
+typedef enum { IMMIDIATE, DIRECT, DISTANCE, DIRREG, NULLPARAM=-1 } ParamType;
 
 #define OPCODE_LOCATION 6
 #define GROUP_LOCATION 10
@@ -17,7 +17,9 @@ typedef enum { IMMIDIATE, DIRECT, DISTANCE, DIRREG } ParamType;
 #define TARGET_TYPE_DIST 2
 #define TARGET_TYPE_IMID 0
 
-#define RELOACATEABLE 2;
+#define ABSOLUTE 0;
+#define EXTERNADDRESS 1;
+#define RELOACATEABLEADDRESS 2;
 
 #define REGISTER_COUNT 7
 #define REGISTER_DATALOC 7
@@ -38,11 +40,15 @@ extern struct word*headWordList;
 extern char CmdList[CommandCount][MaxCmdLength];
 typedef enum { mov, cmp, add, sub, not, clr, lea, inc, dec, jmp, bne, red, prn, jsr, rts, stop } opCode;
 
-ParamType ParseParams(FILE *fp, int ic);
+ParamType ParseParamFirstPass(FILE *fp, int ic);
+ParamType ParseParamSecondPass(FILE *fp, int ic);
+
 
 void InsertToLabelList(char *name, int address, struct label*list);
 struct label *GetLabelFromList(char *name);
 int CalcLabelAddress(struct label *a);
 void insertWord(struct word*a);
 
-void SecondPass();
+void SecondPass(FILE * fp);
+unsigned short GetGroup(opCode cmdType);
+

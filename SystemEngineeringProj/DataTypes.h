@@ -1,10 +1,10 @@
 /*"ID" or "Component" of the row*/
 struct rowComp
 {
-	int hasLabel : 1;
-	int isData : 1;				/* .Data or / .string*/
-	int isInstruction : 1;		/* mov...*/
-	int isExtern : 1;
+	unsigned int hasLabel : 1;
+	unsigned int isData : 1;				/* .Data or / .string*/
+	unsigned int isInstruction : 1;		/* mov...*/
+	unsigned int isExtern : 1;
 };
 
 struct label
