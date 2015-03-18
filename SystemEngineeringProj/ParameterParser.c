@@ -45,7 +45,6 @@ struct word* ParseCalcDistanceParam(FILE *fp, int ic, Bool isSecondPass)
 	}
 	labelNameB[i] = NULL;
 
-	/*If its the first pass, no need to verify labels exist and parse them, return now*/
 	if (!isSecondPass)
 		return NULL;
 
@@ -66,14 +65,13 @@ struct word* ParseCalcDistanceParam(FILE *fp, int ic, Bool isSecondPass)
 
 	result = malloc(sizeof(struct word));
 	result->next = NULL;
-	result->address = ic;
 
 	labelAAddress = CalcLabelAddress(labelA);
 	labelBAddress = CalcLabelAddress(labelB);
 	/*Distance between labels is the absolute value of the difference between struct labelA address and struct labelB address*/
 	distLabels = abs(labelAAddress - labelBAddress);
-	distCmdA = abs(labelAAddress - ic);
-	distCmdB = abs(labelBAddress - ic);
+	distCmdA = abs(labelAAddress - ic - PROGRAM_OFFSET);
+	distCmdB = abs(labelBAddress - ic - PROGRAM_OFFSET);
 
 	/*if extern*/
 	if (labelA->rowType.isExtern)
@@ -85,7 +83,7 @@ struct word* ParseCalcDistanceParam(FILE *fp, int ic, Bool isSecondPass)
 	return result;
 }
 
-struct word* ParseDirectValue(FILE *fp, int ic)
+struct word* ParseDirectValue(FILE *fp)
 {
 	int parsedValue;
 	struct word*result;
@@ -93,7 +91,6 @@ struct word* ParseDirectValue(FILE *fp, int ic)
 	{
 		result = malloc(sizeof(struct word));
 		result->next = NULL;
-		result->address = ic;
 		result->instructionBinary = parsedValue << EXTRAWORD_DATALOC;
 		return result;
 	}
@@ -105,7 +102,7 @@ struct word* ParseDirectValue(FILE *fp, int ic)
 	}
 }
 
-struct word* TryParseRegister(char *param, int ic)
+struct word* TryParseRegister(char *param)
 {
 	struct word* result;
 	/*Check if it is not a valid register*/
@@ -115,7 +112,6 @@ struct word* TryParseRegister(char *param, int ic)
 		&& (param[2] != ',' && param[2] != NULL))
 		return NULL;
 	result = malloc(sizeof(struct word));
-	result->address = ic;
 	result->instructionBinary = (param[1] - '0') << REGISTER_DATALOC;
 	result->next = NULL;
 	return result;
@@ -129,9 +125,8 @@ struct word* TryParseLabel(char *name, int ic, Bool isSecondPass)
 		return NULL;
 	result = malloc(sizeof(struct word));
 	result->next = NULL;
-	result->address = ic;
 	/*shift address 2 bits left.*/
-	result->instructionBinary = (lab->address) << EXTRAWORD_DATALOC;
+	result->instructionBinary = (CalcLabelAddress(lab)) << EXTRAWORD_DATALOC;
 	/*assign A.R.E value*/
 	if (isSecondPass && lab->rowType.isExtern)
 	{
@@ -207,7 +202,7 @@ struct word* ParseParamWordAndType(FILE *fp, int ic, Bool isSecondPass, ParamTyp
 	else if (currentChar == '#')
 	{
 		*typeOutput = IMMIDIATE;
-		return ParseDirectValue(fp, ic);
+		return ParseDirectValue(fp);
 	}
 	/*Unget the character, we will read the rest as string.*/
 	
@@ -220,7 +215,7 @@ struct word* ParseParamWordAndType(FILE *fp, int ic, Bool isSecondPass, ParamTyp
 	/* Unget the last character, if it was ',' we want to handle it later*/
 	ungetc(currentChar, fp);
 
-	if (result = TryParseRegister(currentString, ic))
+	if (result = TryParseRegister(currentString))
 	{
 		*typeOutput = DIRREG;
 		return result;
@@ -243,24 +238,6 @@ struct word* ParseParamWordAndType(FILE *fp, int ic, Bool isSecondPass, ParamTyp
 	return NULL;
 }
 
-/*Merges the last two words - assumes they are registers which need to be placed side by side in the same work.*/
-void MergeDirectRegisterParams()
-{
-	struct word*cWord = headWordList;
-
-	/*Advance to the second-to-last word.*/
-	while ((cWord->next)->next)
-		cWord = cWord->next;
-
-	/*merge the two words*/
-	cWord->instructionBinary |= (((cWord->next)->instructionBinary) >> REGISTER_SIZE);
-
-	/*Free resources, and remove from list.*/
-	free(cWord->next);
-	cWord->next = NULL;
-}
-
-
 int ParseParamsTypeAndLength(FILE *fp, opCode cmd, int ic, Bool isSecondPass, ParamType *aType, ParamType *bType)
 {
 	short numOfParams;
@@ -279,11 +256,10 @@ int ParseParamsTypeAndLength(FILE *fp, opCode cmd, int ic, Bool isSecondPass, Pa
 				printf("\nExcess characters found after all parameters have been parsed...\n");
 			}
 		}
-		return ic;
+		return ++ic;
 	}
 
 	paramA = ParseParamWordAndType(fp, ic, isSecondPass, aType);
-	ic++;
 
 	if (numOfParams == 2)
 	{
@@ -293,29 +269,48 @@ int ParseParamsTypeAndLength(FILE *fp, opCode cmd, int ic, Bool isSecondPass, Pa
 			tempChar = fgetc(fp);
 		} while (tempChar != ',');
 		paramB = ParseParamWordAndType(fp, ic, isSecondPass, bType);
-		ic++;
-		//if both are reg they only take one word.
-		if (DIRREG == *aType && DIRREG == *bType)
-		{
-			ic--;
-			if (isSecondPass)
-				MergeDirectRegisterParams();
-		}
 	}
+
+	//Advance IC (command takes 1 word).
+	ic++;
+	if (*aType != NULLPARAM)
+		ic++;
 
 	if (paramA)
 	{
 		if (isSecondPass)
+		{
+			paramA->address = ic;
 			InsertWord(paramA);
+		}
 		else
 			free(paramA);
 	}
+
+	/*If both params are reg they only take one word - no need to advance IC.*/
+	if (*bType != NULLPARAM && (DIRREG != *aType || DIRREG != *bType))
+		ic++;
+
 	if (paramB)
 	{
 		if (isSecondPass)
-			InsertWord(paramB);
+		{
+			/*If both params are reg they only take one word.*/
+			if (DIRREG == *aType && DIRREG == *bType)
+			{
+				paramA->instructionBinary <<= REGISTER_SIZE;
+				paramA->instructionBinary |= paramB->instructionBinary;
+			}
+			else
+			{
+				paramB->address = ic;
+				InsertWord(paramB);
+			}
+		}
 		else
+		{
 			free(paramB);
+		}
 	}
 	return ic;
 }
@@ -324,6 +319,8 @@ int ParseParamsSecondPass(FILE *fp, opCode cmd, int ic, struct word *instruction
 {
 	ParamType aType, bType;
 	ic = ParseParamsTypeAndLength(fp, cmd, ic, TRUE, &aType, &bType);
+	if (bType == DIRREG || aType == DIRREG)
+		printf("we did get here... %d, %d\n", aType, bType);
 
 	if (aType != NULLPARAM)
 	{ 

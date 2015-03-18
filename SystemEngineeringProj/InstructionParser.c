@@ -54,7 +54,6 @@ int ParseCmd(FILE *fp, int ic)
 
 	printf("inserting incomplete word");
 	InsertWord(result);
-	ic++;
 	ic = ParseParamsSecondPass(fp, cmdType, ic, result);
 	printf("complete word: ");
 	printWord(*result);

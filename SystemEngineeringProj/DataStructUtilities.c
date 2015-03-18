@@ -41,11 +41,11 @@ int CalcLabelAddress(struct label*a)
 {
 	struct rowComp type = a->rowType;
 	if (type.isData)
-		return totalIC + a->address;
+		return PROGRAM_OFFSET + totalIC + a->address;
 	else if (type.isExtern)
 		return NULL;
 	else if (type.isInstruction)
-		return a->address;
+		return PROGRAM_OFFSET + a->address;
 }
 
 /*Iterates over all labels, returns matching struct labelor NULL if not found.*/

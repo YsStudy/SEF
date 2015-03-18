@@ -6,6 +6,8 @@
 typedef enum {FALSE, TRUE } Bool;
 typedef enum { IMMIDIATE, DIRECT, DISTANCE, DIRREG, NULLPARAM=-1 } ParamType;
 
+#define PROGRAM_OFFSET 100
+
 #define OPCODE_LOCATION 6
 #define GROUP_LOCATION 10
 #define SOURCEOP_LOCATION 4
@@ -22,7 +24,7 @@ typedef enum { IMMIDIATE, DIRECT, DISTANCE, DIRREG, NULLPARAM=-1 } ParamType;
 #define RELOACATEABLEADDRESS 2;
 
 #define REGISTER_COUNT 7
-#define REGISTER_DATALOC 7
+#define REGISTER_DATALOC 2
 
 #define MaxCmdLength 5
 #define CommandCount 16
