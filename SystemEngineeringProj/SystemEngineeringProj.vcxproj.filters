@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="InstructionParser.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -30,12 +27,21 @@
     <ClCompile Include="DebugSamples.c">
       <Filter>Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="ResultWriter.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FirstPass.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SecondPass.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="SampleInput.txt">
+    <Text Include="ProtoTypeSketch.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="ProtoTypeSketch.txt">
+    <Text Include="SampleInput.as">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
@@ -44,6 +50,18 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Globals.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ResultWriter.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DataStructUtilities.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FirstPass.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SecondPass.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

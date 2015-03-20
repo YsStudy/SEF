@@ -1,0 +1,1 @@
+void WriteResults(char* fileName);

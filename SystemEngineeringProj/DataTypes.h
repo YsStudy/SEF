@@ -1,3 +1,8 @@
+#ifndef DATA_TYPES
+#define DATA_TYPES
+
+#define WORD_SIZE 12
+
 /*"ID" or "Component" of the row*/
 struct rowComp
 {
@@ -5,6 +10,7 @@ struct rowComp
 	unsigned int isData : 1;				/* .Data or / .string*/
 	unsigned int isInstruction : 1;		/* mov...*/
 	unsigned int isExtern : 1;
+	unsigned int isEntry : 1;
 };
 
 struct label
@@ -26,14 +32,16 @@ struct extLabel
 /*"Data / Sring Table" (will be contained in linked list)*/
 struct dataNode
 {
-	int data;
+	int data : WORD_SIZE;
 	int address;
 	struct dataNode* next;
 };
 
 struct word
 {
-	unsigned short instructionBinary : 12;
+	unsigned short instructionBinary : WORD_SIZE;
 	int address;
 	struct word* next;
 };
+
+#endif

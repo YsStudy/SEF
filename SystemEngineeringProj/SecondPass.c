@@ -1,5 +1,10 @@
 #include "Globals.h"
 
+#define OPCODE_LOCATION 6
+#define GROUP_LOCATION 10
+#define SOURCEOP_LOCATION 4
+#define DESTOP_LOCATION 2
+
 opCode GetCommandType(char * cmd);
 unsigned short GetGroup(opCode cmdType);
 int ParseCmd(FILE *fp, int ic);
@@ -18,6 +23,22 @@ void SecondPass(FILE * fp)
 		/*Reads a command, or does nothing if it cannot find a command.
 		Returns the IC after advancing it accordingly*/
 		ic = ParseCmd(fp, ic);
+	}
+}
+
+void ScanAndMarkEntry(FILE *fp)
+{
+	char labelName[MAX_LABEL_SIZE];
+	struct label* label;
+	fscanf(fp, "%s", labelName);
+	if (label = GetLabelFromList(labelName))
+	{
+		label->rowType.isEntry = 1;
+	}
+	else
+	{
+		printf("An entry was declared on a non-existant label.\n");
+		ErrorFound = TRUE;
 	}
 }
 
@@ -43,6 +64,10 @@ int ParseCmd(FILE *fp, int ic)
 		else
 		{
 			cmdType = GetCommandType(cmd);
+		}
+		if (cmdType == -1 && (!strcmp(cmd, ".entry")))
+		{
+			ScanAndMarkEntry(fp);
 		}
 	} while (cmdType == -1);
 

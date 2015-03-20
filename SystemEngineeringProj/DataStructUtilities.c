@@ -14,9 +14,9 @@ void printWord(struct word W)
 	printf("\n");
 }
 
-void InsertToLabelList (char *name, int address, struct label*list)
+void InsertExtern(char *name, int address)
 {
-	struct label* cntPtr = list;
+	struct extLabel* cntPtr = headExternList;
 	while (cntPtr->next)
 		cntPtr = cntPtr->next;
 	cntPtr->next = (struct label*)malloc(sizeof(struct label));
@@ -62,3 +62,29 @@ struct label*GetLabelFromList(char *name)
 	return NULL;
 }
 
+void InsertLabel(char* c, int cnt, struct rowComp rc)
+{
+	struct label* cntPtr = headLabelList;
+	while (cntPtr->next)
+		cntPtr = cntPtr->next;
+	cntPtr->next = (struct label*)malloc(sizeof(struct label));
+	cntPtr = cntPtr->next;
+	cntPtr->address = cnt;
+	cntPtr->name = (char*)malloc(sizeof(char*)*(strlen(c) + 1));
+	strcpy(cntPtr->name, c);
+	cntPtr->rowType = rc;
+	cntPtr->next = NULL;
+}
+
+void InsertDataOrString(int cnt, int n)
+{
+	struct dataNode* cntPtr = headDataList;
+
+	while (cntPtr->next)
+		cntPtr = cntPtr->next;
+	cntPtr->next = (struct dataNode*)malloc(sizeof(struct dataNode));
+	cntPtr = cntPtr->next;
+	cntPtr->address = cnt;
+	cntPtr->data = n;
+	cntPtr->next = NULL;
+}

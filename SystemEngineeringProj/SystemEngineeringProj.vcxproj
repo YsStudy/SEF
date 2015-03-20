@@ -78,17 +78,23 @@
   <ItemGroup>
     <ClCompile Include="DataStructUtilities.c" />
     <ClCompile Include="DebugSamples.c" />
-    <ClCompile Include="InstructionParser.c" />
+    <ClCompile Include="FirstPass.c" />
+    <ClCompile Include="SecondPass.c" />
     <ClCompile Include="Main.c" />
     <ClCompile Include="ParameterParser.c" />
+    <ClCompile Include="ResultWriter.c" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ProtoTypeSketch.txt" />
-    <Text Include="SampleInput.txt" />
+    <Text Include="SampleInput.as" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DataStructUtilities.h" />
     <ClInclude Include="DataTypes.h" />
+    <ClInclude Include="FirstPass.h" />
     <ClInclude Include="Globals.h" />
+    <ClInclude Include="ResultWriter.h" />
+    <ClInclude Include="SecondPass.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

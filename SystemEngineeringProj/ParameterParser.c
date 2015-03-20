@@ -1,8 +1,17 @@
 #include "Globals.h"
-
+#include "DataTypes.h"
 #define REGISTER_SIZE 5
+
 #define DST_PARAMTYPE_LOCATION 2
 #define SRC_PARAMTYPE_LOCATION 4
+#define REGISTER_DATALOC 2
+
+#define REGISTER_COUNT 7
+
+#define EXTRAWORD_DATALOC 2
+
+#define RELOACATEABLEADDRESS 2
+#define EXTERNADDRESS 1
 
 struct word* ParseCalcDistanceParam(FILE *fp, int ic, Bool isSecondPass)
 {
@@ -74,10 +83,11 @@ struct word* ParseCalcDistanceParam(FILE *fp, int ic, Bool isSecondPass)
 	distCmdB = abs(labelBAddress - ic - PROGRAM_OFFSET);
 
 	/*if extern*/
-	if (labelA->rowType.isExtern)
-		InsertToLabelList(labelA->name, ic, headExternList);
-	if (labelB->rowType.isExtern)
-		InsertToLabelList(labelB->name, ic, headExternList);
+	if (labelA->rowType.isExtern || labelB->rowType.isExtern)
+	{
+		printf("Error, extern used in a distance operation");
+		ErrorFound = TRUE;
+	}
 
 	result->instructionBinary = max(max(distLabels, distCmdA), distCmdB) << EXTRAWORD_DATALOC;
 	return result;
@@ -117,7 +127,7 @@ struct word* TryParseRegister(char *param)
 	return result;
 }
 
-struct word* TryParseLabel(char *name, int ic, Bool isSecondPass)
+struct word* TryParseLabel(char *name, int ic, Bool isSecondPass, Bool isSecondParam)
 {
 	struct word*result;
 	struct label*lab = GetLabelFromList(name);
@@ -131,7 +141,7 @@ struct word* TryParseLabel(char *name, int ic, Bool isSecondPass)
 	if (isSecondPass && lab->rowType.isExtern)
 	{
 		result->instructionBinary |= EXTERNADDRESS;
-		InsertToLabelList(lab->name, ic, headExternList);
+		InsertExtern(lab->name, ic + PROGRAM_OFFSET + 1 + isSecondParam);
 	}
 	else
 		result->instructionBinary |= RELOACATEABLEADDRESS;
@@ -180,7 +190,7 @@ Bool ValidateParameterType(int isDestination, ParamType param, opCode cmd)
 /*
 Parase a single parameter, return the word, and the target type via the parameter.
 */
-struct word* ParseParamWordAndType(FILE *fp, int ic, Bool isSecondPass, ParamType* typeOutput)
+struct word* ParseParamWordAndType(FILE *fp, int ic, Bool isSecondPass, Bool isSecondParam, ParamType* typeOutput)
 {
 	char currentChar;
 	char currentString[MAX_LABEL_SIZE];
@@ -226,7 +236,7 @@ struct word* ParseParamWordAndType(FILE *fp, int ic, Bool isSecondPass, ParamTyp
 		*typeOutput = DIRECT;
 		return NULL;
 	}
-	else if (result = TryParseLabel(currentString, ic, isSecondPass))
+	else if (result = TryParseLabel(currentString, ic, isSecondPass, isSecondParam))
 	{
 		*typeOutput = DIRECT;
 		return result;
@@ -259,7 +269,7 @@ int ParseParamsTypeAndLength(FILE *fp, opCode cmd, int ic, Bool isSecondPass, Pa
 		return ++ic;
 	}
 
-	paramA = ParseParamWordAndType(fp, ic, isSecondPass, aType);
+	paramA = ParseParamWordAndType(fp, ic, isSecondPass, FALSE, aType);
 
 	if (numOfParams == 2)
 	{
@@ -268,7 +278,7 @@ int ParseParamsTypeAndLength(FILE *fp, opCode cmd, int ic, Bool isSecondPass, Pa
 		{
 			tempChar = fgetc(fp);
 		} while (tempChar != ',');
-		paramB = ParseParamWordAndType(fp, ic, isSecondPass, bType);
+		paramB = ParseParamWordAndType(fp, ic, isSecondPass, TRUE, bType);
 	}
 
 	//Advance IC (command takes 1 word).
@@ -295,11 +305,18 @@ int ParseParamsTypeAndLength(FILE *fp, opCode cmd, int ic, Bool isSecondPass, Pa
 	{
 		if (isSecondPass)
 		{
-			/*If both params are reg they only take one word.*/
-			if (DIRREG == *aType && DIRREG == *bType)
+			/*If there is a second param, a should be shifted to the source param.*/
+			if (DIRREG == *aType)
 			{
 				paramA->instructionBinary <<= REGISTER_SIZE;
-				paramA->instructionBinary |= paramB->instructionBinary;
+				/*If both params are reg they only take one word.*/
+				if (DIRREG == *bType)
+					paramA->instructionBinary |= paramB->instructionBinary;
+				else
+				{
+					paramB->address = ic;
+					InsertWord(paramB);
+				}
 			}
 			else
 			{

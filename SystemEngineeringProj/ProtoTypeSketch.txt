@@ -75,7 +75,7 @@ int getOpcode(char* line);
 //Called by first pass
 void insertData(dataHolder* x);
 void insertExtern(extern* x);
-void insertLabel(label* x);
+void InsertLabel(label* x);
 
 //Called by second pass
 void insertWord(word* word);
